@@ -1,4 +1,4 @@
-import React, { useState, useContext, useReducer } from "react";
+import React, { useState, useContext, useReducer, useEffect } from "react";
 import reducer from "./reducer";
 
 import {
@@ -16,6 +16,20 @@ import {
   UPDATE_USER_SUCCESS,
   UPDATE_USER_ERROR,
   HANDLE_CHANGE,
+  CLEAR_VALUES,
+  CREATE_JOB_BEGIN,
+  CREATE_JOB_ERROR,
+  CREATE_JOB_SUCCESS,
+  GET_JOBS_BEGIN,
+  GET_JOBS_ERROR,
+  GET_JOBS_SUCCESS,
+  SET_EDIT_JOB,
+  DELETE_JOB_BEGIN,
+  EDIT_JOB_BEGIN,
+  EDIT_JOB_ERROR,
+  EDIT_JOB_SUCCESS,
+  SHOW_STATS_BEGIN,
+  SHOW_STATS_SUCCESS,
 } from "./actions";
 import axios from "axios";
 
@@ -41,6 +55,12 @@ const initialState = {
   jobType: "full-time",
   statusOptions: ["interview", "declined", "pending"],
   status: "pending",
+  jobs: [],
+  totalJobs: 0,
+  numOfPages: 1,
+  page: 1,
+  stats: {},
+  monthlyApplications: [],
 };
 
 const AppContext = React.createContext();
@@ -50,23 +70,10 @@ const AppProvider = ({ children }) => {
 
   const authFetch = axios.create({
     baseURL: "/api/v1",
-  });
-  // request
-
-  // response
-
-  authFetch.interceptors.response.use(
-    (response) => {
-      return response;
+    headers: {
+      Authorization: `Bearer ${state.token}`,
     },
-    (error) => {
-      // console.log(error.response)
-      if (error.response.status === 401) {
-        logoutUser();
-      }
-      return Promise.reject(error);
-    }
-  );
+  });
 
   const displayAlert = () => {
     dispatch({ type: DISPLAY_ALERT });
@@ -175,6 +182,126 @@ const AppProvider = ({ children }) => {
     dispatch({ type: HANDLE_CHANGE, payload: { name, value } });
   };
 
+  const clearValues = () => {
+    dispatch({ type: CLEAR_VALUES });
+  };
+
+  const createJob = async () => {
+    dispatch({ type: CREATE_JOB_BEGIN });
+    try {
+      const { position, company, jobLocation, jobType, status } = state;
+
+      await axios.post(
+        "/api/v1/jobs",
+        {
+          company,
+          position,
+          jobLocation,
+          jobType,
+          status,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${state.token}`,
+          },
+        }
+      );
+      dispatch({ type: CREATE_JOB_SUCCESS });
+      dispatch({ type: CLEAR_VALUES });
+    } catch (error) {
+      dispatch({
+        type: CREATE_JOB_ERROR,
+        payload: { msg: error.response.data.msg },
+      });
+    }
+  };
+
+  const getJobs = async () => {
+    let url = `/api/v1/jobs`;
+
+    dispatch({ type: GET_JOBS_BEGIN });
+    try {
+      const { data } = await axios.get(url, {
+        headers: {
+          Authorization: `Bearer ${state.token}`,
+        },
+      });
+      const { jobs, totalJobs, numOfPages } = data;
+      dispatch({
+        type: GET_JOBS_SUCCESS,
+        payload: {
+          jobs,
+          totalJobs,
+          numOfPages,
+        },
+      });
+    } catch (error) {
+      console.log(error.response);
+      logoutUser();
+    }
+    clearAlert();
+  };
+
+  const setEditJob = (id) => {
+    dispatch({ type: SET_EDIT_JOB, payload: { id } });
+  };
+
+  const editJob = async () => {
+    console.log("edit job");
+    dispatch({ type: EDIT_JOB_BEGIN });
+    try {
+      const { position, company, jobLocation, jobType, status } = state;
+      await authFetch.patch(`/jobs/${state.editJobId}`, {
+        company,
+        position,
+        jobLocation,
+        jobType,
+        status,
+      });
+      dispatch({ type: EDIT_JOB_SUCCESS });
+      dispatch({ type: CLEAR_VALUES });
+    } catch (e) {
+      if (e.response.status === 401) return;
+      dispatch({
+        type: EDIT_JOB_ERROR,
+        payload: { msg: e.response.data.msg },
+      });
+    }
+  };
+  const deleteJob = async (jobId) => {
+    dispatch({ type: DELETE_JOB_BEGIN });
+    try {
+      await authFetch.delete(`/jobs/${jobId}`);
+      getJobs();
+    } catch (e) {
+      console.log(e.response);
+      // logoutUser();
+    }
+    console.log(`set delete job: ${jobId}`);
+  };
+
+  const showStats = async () => {
+    dispatch({ type: SHOW_STATS_BEGIN });
+    try {
+      const { data } = await authFetch.get("/jobs/stats");
+      dispatch({
+        type: SHOW_STATS_SUCCESS,
+        payload: {
+          stats: data.defaultStats,
+          monthlyApplications: data.monthlyApplications,
+        },
+      });
+    } catch (error) {
+      console.log(error.response);
+      // logoutUser();
+    }
+    clearAlert();
+  };
+
+  // useEffect(() => {
+  //   getJobs();
+  // }, []);
+
   return (
     <AppContext.Provider
       value={{
@@ -183,10 +310,18 @@ const AppProvider = ({ children }) => {
         clearAlert,
         registerUser,
         loginUser,
+
         toggleSidebar,
         logoutUser,
         updateUser,
         handleChange,
+        clearValues,
+        createJob,
+        getJobs,
+        setEditJob,
+        deleteJob,
+        editJob,
+        showStats,
       }}
     >
       {children}

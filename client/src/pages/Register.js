@@ -41,7 +41,6 @@ const Register = () => {
     } else {
       registerUser(currentUser);
     }
-
     console.log(value);
   };
 
