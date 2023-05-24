@@ -1,4 +1,4 @@
-import React, { useState, useContext, useReducer, useEffect } from "react";
+import React, { useContext, useReducer } from "react";
 import reducer from "./reducer";
 
 import {
@@ -30,6 +30,8 @@ import {
   EDIT_JOB_SUCCESS,
   SHOW_STATS_BEGIN,
   SHOW_STATS_SUCCESS,
+  CLEAR_FILTERS,
+  CHANGE_PAGE,
 } from "./actions";
 import axios from "axios";
 
@@ -61,6 +63,11 @@ const initialState = {
   page: 1,
   stats: {},
   monthlyApplications: [],
+  search: "",
+  searchStatus: "all",
+  searchType: "all",
+  sort: "latest",
+  sortOptions: ["latest", "oldest", "a-z", "z-a"],
 };
 
 const AppContext = React.createContext();
@@ -217,7 +224,12 @@ const AppProvider = ({ children }) => {
   };
 
   const getJobs = async () => {
-    let url = `/api/v1/jobs`;
+    const { page, search, searchStatus, searchType, sort } = state;
+    let url = `/api/v1/jobs?page=${page}status=${searchStatus}&jobType=${searchType}&sort=${sort}`;
+
+    if (search) {
+      url = url + `&search=${search}`;
+    }
 
     dispatch({ type: GET_JOBS_BEGIN });
     try {
@@ -236,7 +248,6 @@ const AppProvider = ({ children }) => {
         },
       });
     } catch (error) {
-      console.log(error.response);
       logoutUser();
     }
     clearAlert();
@@ -274,8 +285,7 @@ const AppProvider = ({ children }) => {
       await authFetch.delete(`/jobs/${jobId}`);
       getJobs();
     } catch (e) {
-      console.log(e.response);
-      // logoutUser();
+      logoutUser();
     }
     console.log(`set delete job: ${jobId}`);
   };
@@ -292,15 +302,19 @@ const AppProvider = ({ children }) => {
         },
       });
     } catch (error) {
-      console.log(error.response);
-      // logoutUser();
+      logoutUser();
     }
     clearAlert();
   };
 
-  // useEffect(() => {
-  //   getJobs();
-  // }, []);
+  const clearFilters = () => {
+    dispatch({ type: CLEAR_FILTERS });
+  };
+
+  const changePage = (page) => {
+    console.log(page);
+    dispatch({ type: CHANGE_PAGE, payload: { page } });
+  };
 
   return (
     <AppContext.Provider
@@ -322,6 +336,8 @@ const AppProvider = ({ children }) => {
         deleteJob,
         editJob,
         showStats,
+        clearFilters,
+        changePage,
       }}
     >
       {children}
