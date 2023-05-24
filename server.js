@@ -21,6 +21,7 @@ import authenticateUser from "./middleware/auth.js";
 import helmet from "helmet";
 import xss from "xss-clean";
 import mongoSanitize from "express-mongo-sanitize";
+import cookieParser from "cookie-parser";
 
 //middleware
 if (process.env.NODE_ENV !== "production") {
@@ -33,6 +34,7 @@ app.use(express.json());
 app.use(helmet());
 app.use(xss());
 app.use(mongoSanitize());
+app.use(cookieParser());
 console.log("hello");
 
 app.get("/", (req, res) => {
