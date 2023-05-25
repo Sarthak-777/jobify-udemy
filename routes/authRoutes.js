@@ -3,6 +3,7 @@ import {
   login,
   updateUser,
   getCurrentUser,
+  logout,
 } from "../controllers/authController.js";
 import express from "express";
 import authenticateUser from "../middleware/auth.js";
@@ -19,6 +20,8 @@ const router = express.Router();
 
 router.route("/register").post(apiLimiter, register);
 router.route("/login").post(apiLimiter, login);
+router.route("/logout").get(logout);
+
 router.route("/updateUser").patch(authenticateUser, updateUser);
 router.route("/getCurrentUser").get(authenticateUser, getCurrentUser);
 
